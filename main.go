@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/chromedp/cdproto/dom"
@@ -16,9 +18,16 @@ import (
 )
 
 var (
-	BootstrapRegExp = regexp.MustCompile(`var data = (\[.+\])\s+return`)
-	TopPlayerRegExp = regexp.MustCompile(`\["TOP_PLAYERS",(\{"users":.*?\})\],`)
+	TopPlayerRegExp    = regexp.MustCompile(`\["TOP_PLAYERS",\{"users":(.*?),"teams":(.*?)\],`)
+	TopPlayerMapRegExp = regexp.MustCompile(`"([0-9]+)":([0-9]+)`)
 )
+
+type NTGLOBALS map[string]interface{}
+
+type TopPlayer struct {
+	ID       int `json:"id"`
+	Position int `json:"position"`
+}
 
 func main() {
 	app := &cli.App{
@@ -34,9 +43,13 @@ func main() {
 				Action: func(c *cli.Context) error {
 					source, err := downloadBootstrapFile(context.Background())
 					if err != nil {
-						return fmt.Errorf("unable to downloda bootstrap.js: %w", err)
+						return fmt.Errorf("unable to download bootstrap.js: %w", err)
 					}
-					fmt.Println("Test", source)
+					output, err := json.Marshal(&source)
+					if err != nil {
+						return fmt.Errorf("unable to marshal to json: %w", err)
+					}
+					fmt.Println(string(output))
 					return nil
 				},
 			},
@@ -49,7 +62,7 @@ func main() {
 	}
 }
 
-func downloadBootstrapFile(ctx context.Context) (string, error) {
+func downloadBootstrapFile(ctx context.Context) (NTGLOBALS, error) {
 	// Setup Chrome
 	ctx, cancel := chromedp.NewExecAllocator(ctx,
 		chromedp.UserAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"),
@@ -71,11 +84,15 @@ func downloadBootstrapFile(ctx context.Context) (string, error) {
 	defer cancel()
 
 	// Find bootstrap.js
-	var bootstrapSrc string
+	var (
+		bootstrapSrc string
+		ntGlobals    map[string]interface{}
+	)
 
 	err := chromedp.Run(ctx,
 		chromedp.Navigate("https://www.nitrotype.com/"),
 		chromedp.WaitReady("#root"),
+		chromedp.Evaluate("window.NTGLOBALS", &ntGlobals, chromedp.EvalAsValue),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			node, err := dom.GetDocument().Do(ctx)
 			if err != nil {
@@ -100,18 +117,18 @@ func downloadBootstrapFile(ctx context.Context) (string, error) {
 					break
 				}
 			}
-			return nil
-		}),
-		chromedp.ActionFunc(func(ctx context.Context) error {
+
+			// Grab Bootstrap Source to manually parse in the Top Players+Teams
 			if bootstrapSrc == "" {
 				return fmt.Errorf("bootstrap.js not found")
 			}
 			bootstrapSrc = "https://www.nitrotype.com" + bootstrapSrc
+
 			return nil
 		}),
 	)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Setup download
@@ -133,25 +150,64 @@ func downloadBootstrapFile(ctx context.Context) (string, error) {
 
 	err = chromedp.Run(ctx, chromedp.Navigate(bootstrapSrc))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	<-downloadComplete
 
-	// get the downloaded bytes for the request id
+	// Get the downloaded bytes for the request id
 	var downloadBytes []byte
 	if err := chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
 		downloadBytes, err = network.GetResponseBody(requestID).Do(ctx)
 		return err
 	})); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	data := string(downloadBytes)
-	results := BootstrapRegExp.FindStringSubmatch(data)
-	if len(results) != 2 {
-		return "", fmt.Errorf("could not find data")
+
+	// Extract Top Players and Teams in ordered fashion
+	topPlayerData := TopPlayerRegExp.FindStringSubmatch(data)
+	if len(topPlayerData) != 3 {
+		return nil, fmt.Errorf("unable to parse top players")
 	}
 
-	return results[1], nil
+	var topPlayers []TopPlayer
+	playerData := TopPlayerMapRegExp.FindAllStringSubmatch(topPlayerData[1], -1)
+	for i, r := range playerData {
+		userID, err := strconv.Atoi(r[1])
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse top player id (row: %d): %w", i, err)
+		}
+		position, err := strconv.Atoi(r[2])
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse top player position (row: %d): %w", i, err)
+		}
+
+		topPlayers = append(topPlayers, TopPlayer{
+			ID:       userID,
+			Position: position,
+		})
+	}
+	var topTeams []TopPlayer
+	teamData := TopPlayerMapRegExp.FindAllStringSubmatch(topPlayerData[2], -1)
+	for i, r := range teamData {
+		teamID, err := strconv.Atoi(r[1])
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse top team id (row: %d): %w", i, err)
+		}
+		position, err := strconv.Atoi(r[2])
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse top team position (row: %d): %w", i, err)
+		}
+
+		topTeams = append(topTeams, TopPlayer{
+			ID:       teamID,
+			Position: position,
+		})
+	}
+	ntGlobals["TOP_PLAYERS"] = topPlayers
+	ntGlobals["TOP_TEAMS"] = topTeams
+
+	return ntGlobals, nil
 }
