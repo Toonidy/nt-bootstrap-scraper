@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/chromedp/cdproto/dom"
@@ -13,6 +14,8 @@ import (
 	"github.com/chromedp/chromedp"
 	"github.com/urfave/cli/v2"
 )
+
+var BootstrapRegExp = regexp.MustCompile(`var data = (\[.+\])\s+return`)
 
 func main() {
 	app := &cli.App{
@@ -141,5 +144,11 @@ func downloadBootstrapFile(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	return string(downloadBytes), nil
+	data := string(downloadBytes)
+	results := BootstrapRegExp.FindStringSubmatch(data)
+	if len(results) != 2 {
+		return "", fmt.Errorf("could not find data")
+	}
+
+	return results[1], nil
 }
