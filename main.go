@@ -15,7 +15,10 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var BootstrapRegExp = regexp.MustCompile(`var data = (\[.+\])\s+return`)
+var (
+	BootstrapRegExp = regexp.MustCompile(`var data = (\[.+\])\s+return`)
+	TopPlayerRegExp = regexp.MustCompile(`\["TOP_PLAYERS",(\{"users":.*?\})\],`)
+)
 
 func main() {
 	app := &cli.App{
