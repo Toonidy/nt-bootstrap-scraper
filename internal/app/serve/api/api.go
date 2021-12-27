@@ -18,7 +18,7 @@ import (
 )
 
 type BootstrapXML struct {
-	XMLName    xml.Name      `xml:"boostrap"`
+	XMLName    xml.Name      `xml:"bootstrap"`
 	TopPlayers TopPlayersXML `xml:"top-players"`
 	TopTeams   TopTeamsXML   `xml:"top-teams"`
 }
@@ -34,11 +34,7 @@ type TopTeamsXML struct {
 type RankItemXML struct {
 	ID          int `xml:"id,attr"`
 	Rank        int `xml:"rank,attr"`
-	TopPosition int `xml:"top-position,attr"`
-}
-
-// NewAPIService sets up the API Service for Raffles
-func NewAPIService(logger *zap.Logger, cacheManager *cache.Cache, corsOptions *cors.Options) http.Handler {
+	e.Cache, corsOptions *cors.Options) http.Handler {
 	corsMiddleware := cors.Handler(*corsOptions)
 
 	r := chi.NewRouter()
