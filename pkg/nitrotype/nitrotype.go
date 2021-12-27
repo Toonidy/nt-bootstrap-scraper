@@ -20,7 +20,7 @@ var (
 
 type NTGLOBALS map[string]interface{}
 
-type TopPlayer struct {
+type RankItem struct {
 	ID       int `json:"id"`
 	Position int `json:"position"`
 }
@@ -137,7 +137,7 @@ func GetBootstrapData(ctx context.Context) (NTGLOBALS, error) {
 		return nil, fmt.Errorf("unable to parse top players")
 	}
 
-	var topPlayers []TopPlayer
+	var topPlayers []RankItem
 	playerData := TopPlayerMapRegExp.FindAllStringSubmatch(topPlayerData[1], -1)
 	for i, r := range playerData {
 		userID, err := strconv.Atoi(r[1])
@@ -149,12 +149,12 @@ func GetBootstrapData(ctx context.Context) (NTGLOBALS, error) {
 			return nil, fmt.Errorf("unable to parse top player position (row: %d): %w", i, err)
 		}
 
-		topPlayers = append(topPlayers, TopPlayer{
+		topPlayers = append(topPlayers, RankItem{
 			ID:       userID,
 			Position: position,
 		})
 	}
-	var topTeams []TopPlayer
+	var topTeams []RankItem
 	teamData := TopPlayerMapRegExp.FindAllStringSubmatch(topPlayerData[2], -1)
 	for i, r := range teamData {
 		teamID, err := strconv.Atoi(r[1])
@@ -166,7 +166,7 @@ func GetBootstrapData(ctx context.Context) (NTGLOBALS, error) {
 			return nil, fmt.Errorf("unable to parse top team position (row: %d): %w", i, err)
 		}
 
-		topTeams = append(topTeams, TopPlayer{
+		topTeams = append(topTeams, RankItem{
 			ID:       teamID,
 			Position: position,
 		})
