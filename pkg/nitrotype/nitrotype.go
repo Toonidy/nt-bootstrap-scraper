@@ -18,13 +18,6 @@ var (
 	TopPlayerMapRegExp = regexp.MustCompile(`"([0-9]+)":([0-9]+)`)
 )
 
-type NTGLOBALS map[string]interface{}
-
-type RankItem struct {
-	ID       int `json:"id"`
-	Position int `json:"position"`
-}
-
 // GetBootstrapData retrives the NTGLOBALS variable from Nitro Type.
 // This function will also manually sort in Top Players and Teams.
 func GetBootstrapData(ctx context.Context) (*NTGlobals, error) {

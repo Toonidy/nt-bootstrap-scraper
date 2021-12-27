@@ -234,3 +234,8 @@ type LootConfig struct {
 	MaxEquipped int    `json:"maxEquipped"`
 	Name        string `json:"name"`
 }
+
+type RankItem struct {
+	ID       int `json:"id"`
+	Position int `json:"position"`
+}
