@@ -27,7 +27,7 @@ type RankItem struct {
 
 // GetBootstrapData retrives the NTGLOBALS variable from Nitro Type.
 // This function will also manually sort in Top Players and Teams.
-func GetBootstrapData(ctx context.Context) (NTGLOBALS, error) {
+func GetBootstrapData(ctx context.Context) (*NTGlobals, error) {
 	// Setup Chrome
 	ctx, cancel := chromedp.NewExecAllocator(ctx,
 		chromedp.UserAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"),
@@ -51,7 +51,8 @@ func GetBootstrapData(ctx context.Context) (NTGLOBALS, error) {
 	// Find bootstrap.js
 	var (
 		bootstrapSrc string
-		ntGlobals    map[string]interface{}
+		// ntGlobals    map[string]interface{}
+		ntGlobals NTGlobals
 	)
 
 	err := chromedp.Run(ctx,
@@ -171,8 +172,8 @@ func GetBootstrapData(ctx context.Context) (NTGLOBALS, error) {
 			Position: position,
 		})
 	}
-	ntGlobals["TOP_PLAYERS"] = topPlayers
-	ntGlobals["TOP_TEAMS"] = topTeams
+	ntGlobals.TopPlayers = topPlayers
+	ntGlobals.TopTeams = topTeams
 
-	return ntGlobals, nil
+	return &ntGlobals, nil
 }
