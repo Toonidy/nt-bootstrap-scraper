@@ -9,13 +9,14 @@ import (
 	"log"
 	"net/http"
 	"nt-bootstrap-scraper/internal/app/serve/api"
+	"nt-bootstrap-scraper/internal/app/serve/cron"
 	"nt-bootstrap-scraper/pkg/nitrotype"
 	"os"
-	"os/signal"
 	"strings"
 	"time"
 
 	"github.com/go-chi/cors"
+	"github.com/oklog/run"
 	"github.com/patrickmn/go-cache"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
@@ -77,6 +78,7 @@ func main() {
 				},
 				Usage: "runs a mini api server to serve nitro type boostrap file data.",
 				Action: func(c *cli.Context) error {
+					ctx, cancel := context.WithCancel(c.Context)
 					cacheManager := cache.New(10*time.Minute, 15*time.Minute)
 
 					corsOptions := &cors.Options{
@@ -99,28 +101,45 @@ func main() {
 					defer logger.Sync()
 
 					apiService := api.NewAPIService(logger, cacheManager, corsOptions)
+					cronService := cron.NewCronService(logger, cacheManager)
 
 					server := &http.Server{
 						Addr:    apiAddr,
 						Handler: apiService,
 					}
-					go func() {
-						if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-							logger.Fatal("api - service failed to start", zap.Error(err))
+
+					// Run API Server and Cron
+					g := &run.Group{}
+					g.Add(run.SignalHandler(ctx, os.Interrupt))
+					g.Add(func() error {
+						logger.Info("cron - service started")
+						cronService.Run()
+						defer cronService.Stop()
+						return nil
+					}, func(err error) {
+						if err != nil {
+							logger.Fatal("api - cron background task has crashed", zap.Error(err))
+							cancel()
 						}
-					}()
-					logger.Info("api - service started")
-					logger.Sugar().Infof("api - hosting on %s", apiAddr)
-
-					quit := make(chan os.Signal, 1)
-					signal.Notify(quit, os.Interrupt)
-					sig := <-quit
-					logger.Info("shutting down server...", zap.Any("reason", sig))
-
-					if err := server.Shutdown(context.Background()); err != nil {
-						logger.Fatal("api - service failed to shutdown", zap.Error(err))
+					})
+					g.Add(func() error {
+						logger.Info("api - service started")
+						logger.Sugar().Infof("api - hosting on %s", apiAddr)
+						return server.ListenAndServe()
+					}, func(err error) {
+						if err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, run.SignalError{Signal: os.Interrupt}) {
+							logger.Fatal("api - server errorred", zap.Error(err))
+						}
+						if err := server.Shutdown(ctx); err != nil {
+							logger.Fatal("api - service failed to shutdown", zap.Error(err))
+						}
+						cancel()
+					})
+					err := g.Run()
+					if errors.Is(err, run.SignalError{Signal: os.Interrupt}) {
+						logger.Fatal("service interrupted")
 					}
-
+					logger.Info("shutting down server...", zap.Any("reason", err))
 					return nil
 				},
 			},

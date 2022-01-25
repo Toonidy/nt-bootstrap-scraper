@@ -17,9 +17,7 @@ RUN apt-get update; apt-get clean
 RUN apt-get update && apt-get -y install wget
 RUN wget --quiet https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 RUN apt install -y ./google-chrome-stable_current_amd64.deb
-RUN chown root:root /opt/google/chrome/chrome-sandbox
-RUN chmod 4755 /opt/google/chrome/chrome-sandbox
 
 # Execute Main Server
 USER ntbootstrap
-CMD ./main serve --api_addr ":$PORT" --prod
+CMD ./main serve

@@ -51,69 +51,10 @@ func NewAPIService(logger *zap.Logger, cacheManager *cache.Cache, corsOptions *c
 		r.Get("/check", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("OK"))
 		})
-		// r.Get("/bootstrap/xml", func(w http.ResponseWriter, r *http.Request) {
-		// 	log := logger.With(zap.String("reqID", middleware.GetReqID(r.Context())))
-
-		// 	source, err := getBootstrapData(cacheManager)
-		// 	if err != nil {
-		// 		log.Error("grabbing bootstrap data from nitro type failed", zap.Error(err))
-
-		// 		w.WriteHeader(http.StatusInternalServerError)
-		// 		w.Write([]byte("Unable to collect NT Bootstrap Data. Please try again later."))
-		// 		return
-		// 	}
-
-		// 	// Populate Output
-		// 	output := &BootstrapXML{}
-		// 	if data, ok := source["TOP_PLAYERS"]; ok {
-		// 		topPlayers, ok := data.([]nitrotype.RankItem)
-		// 		if !ok {
-		// 			log.Error("grabbing top players data from nitro type failed", zap.Error(err))
-
-		// 			w.WriteHeader(http.StatusInternalServerError)
-		// 			w.Write([]byte("Unable to collect NT Bootstrap Data. Please try again later."))
-		// 			return
-		// 		}
-		// 		for rank, player := range topPlayers {
-		// 			rankItem := RankItemXML{
-		// 				Rank:        rank + 1,
-		// 				ID:          player.ID,
-		// 				TopPosition: player.Position,
-		// 			}
-		// 			output.TopPlayers.Players = append(output.TopPlayers.Players, rankItem)
-		// 		}
-		// 	}
-		// 	if data, ok := source["TOP_TEAMS"]; ok {
-		// 		topTeams, ok := data.([]nitrotype.RankItem)
-		// 		if !ok {
-		// 			log.Error("grabbing top teams data from nitro type failed", zap.Error(err))
-
-		// 			w.WriteHeader(http.StatusInternalServerError)
-		// 			w.Write([]byte("Unable to collect NT Bootstrap Data. Please try again later."))
-		// 			return
-		// 		}
-		// 		for rank, team := range topTeams {
-		// 			rankItem := RankItemXML{
-		// 				Rank:        rank + 1,
-		// 				ID:          team.ID,
-		// 				TopPosition: team.Position,
-		// 			}
-		// 			output.TopTeams.Teams = append(output.TopTeams.Teams, rankItem)
-		// 		}
-		// 	}
-
-		// 	// Output XML
-		// 	w.Header().Set("Content-Type", "application/xml")
-		// 	enc := xml.NewEncoder(w)
-		// 	enc.Indent("  ", "    ")
-		// 	if err := enc.Encode(output); err != nil {
-		// 		log.Error("exporting bootstrap data from nitro type failed", zap.Error(err))
-		// 	}
-		// })
 		r.Get("/bootstrap", func(w http.ResponseWriter, r *http.Request) {
 			log := logger.With(zap.String("reqID", middleware.GetReqID(r.Context())))
 
-			source, err := getBootstrapData(cacheManager)
+			source, err := getBootstrapData(logger, cacheManager)
 			if err != nil {
 				log.Error("grabbing bootstrap data from nitro type failed", zap.Error(err))
 
@@ -138,14 +79,14 @@ func NewAPIService(logger *zap.Logger, cacheManager *cache.Cache, corsOptions *c
 }
 
 // getBootstrapData fetchces NT Bootstrap Data from the cache or the net
-func getBootstrapData(cacheManager *cache.Cache) (*nitrotype.NTGlobals, error) {
+func getBootstrapData(logger *zap.Logger, cacheManager *cache.Cache) (*nitrotype.NTGlobals, error) {
 	cacheSource, found := cacheManager.Get("bootstrap_data")
 	if found {
-		source, ok := cacheSource.(nitrotype.NTGlobals)
-		if !ok {
-			return nil, fmt.Errorf("failed to fetch nitro type bootstrap js from cache")
+		source, ok := cacheSource.(*nitrotype.NTGlobals)
+		if ok {
+			return source, nil
 		}
-		return &source, nil
+		logger.Warn("failed to read bootstrap data from cache")
 	}
 
 	source, err := nitrotype.GetBootstrapData(context.Background())
