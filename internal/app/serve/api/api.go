@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"net/http"
 	"nt-bootstrap-scraper/pkg/nitrotype"
@@ -16,26 +15,6 @@ import (
 	"github.com/patrickmn/go-cache"
 	"go.uber.org/zap"
 )
-
-type BootstrapXML struct {
-	XMLName    xml.Name      `xml:"bootstrap"`
-	TopPlayers TopPlayersXML `xml:"top-players"`
-	TopTeams   TopTeamsXML   `xml:"top-teams"`
-}
-
-type TopPlayersXML struct {
-	Players []RankItemXML `xml:"players"`
-}
-
-type TopTeamsXML struct {
-	Teams []RankItemXML `xml:"teams"`
-}
-
-type RankItemXML struct {
-	ID          int `xml:"id,attr"`
-	Rank        int `xml:"rank,attr"`
-	TopPosition int `xml:"top-position,attr"`
-}
 
 // NewAPIService sets up the API Service for Raffles
 func NewAPIService(logger *zap.Logger, cacheManager *cache.Cache, corsOptions *cors.Options) http.Handler {
@@ -79,10 +58,10 @@ func NewAPIService(logger *zap.Logger, cacheManager *cache.Cache, corsOptions *c
 }
 
 // getBootstrapData fetchces NT Bootstrap Data from the cache or the net
-func getBootstrapData(logger *zap.Logger, cacheManager *cache.Cache) (*nitrotype.NTGlobals, error) {
+func getBootstrapData(logger *zap.Logger, cacheManager *cache.Cache) (*nitrotype.NTGlobalsLegacy, error) {
 	cacheSource, found := cacheManager.Get("bootstrap_data")
 	if found {
-		source, ok := cacheSource.(*nitrotype.NTGlobals)
+		source, ok := cacheSource.(*nitrotype.NTGlobalsLegacy)
 		if ok {
 			return source, nil
 		}
