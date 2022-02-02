@@ -2,6 +2,7 @@ package nitrotype
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"regexp"
@@ -14,8 +15,10 @@ import (
 )
 
 var (
-	TopPlayerRegExp    = regexp.MustCompile(`\["TOP_PLAYERS",\{"users":(.*?),"teams":(.*?)\],`)
-	TopPlayerMapRegExp = regexp.MustCompile(`"([0-9]+)":([0-9]+)`)
+	TopPlayerRegExp          = regexp.MustCompile(`\["TOP_PLAYERS",\{"users":(.*?),"teams":(.*?)\],`)
+	TopPlayerMapRegExp       = regexp.MustCompile(`"([0-9]+)":([0-9]+)`)
+	UserProfileExtractRegExp = regexp.MustCompile(`(?m)RACER_INFO: (.*),$`)
+	ErrPlayerNotFound        = fmt.Errorf("player not found")
 )
 
 // GetBootstrapData retrives the NTGLOBALS variable from Nitro Type.
@@ -171,4 +174,73 @@ func GetBootstrapData(ctx context.Context) (*NTGlobalsLegacy, error) {
 	// ntGlobals.TopTeams = topTeams
 
 	return &ntGlobals, nil
+}
+
+// GetPlayerData fetches the RACER_INFO data from racer profile page.
+func GetPlayerData(ctx context.Context, username string) (NTPlayerLegacy, error) {
+	// Setup Chrome
+	ctx, cancel := chromedp.NewExecAllocator(ctx,
+		chromedp.UserAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36"),
+		chromedp.NoFirstRun,
+		chromedp.NoDefaultBrowserCheck,
+		chromedp.NoSandbox,
+		chromedp.Headless,
+		chromedp.DisableGPU,
+	)
+	defer cancel()
+
+	ctx, cancel = chromedp.NewContext(
+		ctx,
+		chromedp.WithLogf(log.Printf),
+	)
+	defer cancel()
+
+	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
+	defer cancel()
+
+	profileURL := "https://www.nitrotype.com/racer/" + username
+
+	// Setup download
+	var requestID network.RequestID
+	downloadComplete := make(chan bool)
+
+	chromedp.ListenTarget(ctx, func(v interface{}) {
+		switch ev := v.(type) {
+		case *network.EventRequestWillBeSent:
+			if ev.Request.URL == profileURL {
+				requestID = ev.RequestID
+			}
+		case *network.EventLoadingFinished:
+			if ev.RequestID == requestID {
+				close(downloadComplete)
+			}
+		}
+	})
+
+	err := chromedp.Run(ctx, chromedp.Navigate(profileURL))
+	if err != nil {
+		return nil, err
+	}
+
+	<-downloadComplete
+
+	// Get the downloaded bytes for the request id
+	var downloadBytes []byte
+	if err := chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
+		downloadBytes, err = network.GetResponseBody(requestID).Do(ctx)
+		return err
+	})); err != nil {
+		return nil, err
+	}
+
+	// Get user
+	matches := UserProfileExtractRegExp.FindSubmatch(downloadBytes)
+	if len(matches) != 2 {
+		return nil, ErrPlayerNotFound
+	}
+	var output NTPlayerLegacy
+	if err := json.Unmarshal(matches[1], &output); err != nil {
+		return nil, fmt.Errorf("unmarshal nt racer data failed: %w", err)
+	}
+	return output, nil
 }

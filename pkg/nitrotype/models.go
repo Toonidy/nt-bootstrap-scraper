@@ -2,6 +2,8 @@ package nitrotype
 
 type NTGlobalsLegacy map[string]interface{}
 
+type NTPlayerLegacy map[string]interface{}
+
 type NTGlobals struct {
 	ActionSeasons []ActiveSeason `json:"ACTIVE_SEASONS"`
 	Achievements  struct {
