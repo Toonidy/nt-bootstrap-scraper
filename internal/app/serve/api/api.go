@@ -54,6 +54,12 @@ func NewAPIService(logger *zap.Logger, cacheManager *cache.Cache, corsOptions *c
 			log := logger.With(zap.String("reqID", middleware.GetReqID(r.Context())))
 
 			username := chi.URLParam(r, "username")
+			if username == "" {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Invalid racer profile request."))
+				return
+			}
+
 			racer, err := getPlayerData(logger, cacheManager, username)
 			if err != nil {
 				log.Error("grabbing player data from nitro type failed", zap.Error(err))
