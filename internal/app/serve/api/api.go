@@ -60,7 +60,7 @@ func NewAPIService(logger *zap.Logger, cacheManager *cache.Cache, corsOptions *c
 				return
 			}
 
-			racer, err := getPlayerData(logger, cacheManager, username)
+			racer, err := getPlayerData(r.Context(), logger, cacheManager, username)
 			if err != nil {
 				log.Error("grabbing player data from nitro type failed", zap.Error(err))
 
@@ -110,7 +110,7 @@ func loggerMiddleware(l *zap.Logger) func(next http.Handler) http.Handler {
 }
 
 // getPlayerData fetchces NT Bootstrap Data from the cache or the net
-func getPlayerData(logger *zap.Logger, cacheManager *cache.Cache, username string) (nitrotype.NTPlayerLegacy, error) {
+func getPlayerData(ctx context.Context, logger *zap.Logger, cacheManager *cache.Cache, username string) (nitrotype.NTPlayerLegacy, error) {
 	cacheName := "player_data_" + username
 	cacheSource, found := cacheManager.Get(cacheName)
 	if found {
@@ -120,7 +120,7 @@ func getPlayerData(logger *zap.Logger, cacheManager *cache.Cache, username strin
 		}
 		logger.Warn("failed to read player data from cache")
 	}
-	racer, err := nitrotype.GetPlayerData(context.Background(), username)
+	racer, err := nitrotype.GetPlayerData(ctx, username)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest nitro type player data: %w", err)
 	}
