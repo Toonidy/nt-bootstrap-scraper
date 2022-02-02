@@ -200,7 +200,6 @@ func GetPlayerData(ctx context.Context, username string) (NTPlayerLegacy, error)
 
 	profileURL := "https://www.nitrotype.com/racer/" + username
 
-	// Setup download
 	var requestID network.RequestID
 	downloadComplete := make(chan bool)
 
@@ -217,20 +216,25 @@ func GetPlayerData(ctx context.Context, username string) (NTPlayerLegacy, error)
 		}
 	})
 
-	err := chromedp.Run(ctx, chromedp.Navigate(profileURL))
+	err := chromedp.Run(ctx,
+		network.Enable(),
+		chromedp.Navigate(profileURL),
+	)
 	if err != nil {
 		return nil, err
 	}
 
+	// This will block until the chromedp listener closes the channel
 	<-downloadComplete
 
 	// Get the downloaded bytes for the request id
 	var downloadBytes []byte
 	if err := chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
+		var err error
 		downloadBytes, err = network.GetResponseBody(requestID).Do(ctx)
 		return err
 	})); err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
 
 	// Get user
