@@ -182,6 +182,7 @@ func GetPlayerData(ctx context.Context, username string) (NTPlayerLegacy, error)
 		chromedp.NoFirstRun,
 		chromedp.NoDefaultBrowserCheck,
 		chromedp.NoSandbox,
+		chromedp.Headless,
 		chromedp.DisableGPU,
 	)
 	defer cancel()
@@ -201,7 +202,6 @@ func GetPlayerData(ctx context.Context, username string) (NTPlayerLegacy, error)
 	profileURL := "https://www.nitrotype.com/racer/" + username
 
 	err := chromedp.Run(ctx,
-		network.Enable(),
 		chromedp.Navigate(profileURL),
 		chromedp.WaitReady("#root"),
 		chromedp.Evaluate("window.NTGLOBALS.RACER_INFO", &output, chromedp.EvalAsValue),

@@ -10,7 +10,7 @@ RUN go build -o /main main.go
 # that we will deploy to production
 FROM debian:buster
 
-RUN useradd ntbootstrap
+RUN useradd -m ntbootstrap
 COPY --from=go_builder /main ./
 
 RUN apt-get update; apt-get clean
