@@ -2,7 +2,6 @@ package nitrotype
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"regexp"
@@ -15,10 +14,9 @@ import (
 )
 
 var (
-	TopPlayerRegExp          = regexp.MustCompile(`\["TOP_PLAYERS",\{"users":(.*?),"teams":(.*?)\],`)
-	TopPlayerMapRegExp       = regexp.MustCompile(`"([0-9]+)":([0-9]+)`)
-	UserProfileExtractRegExp = regexp.MustCompile(`(?m)RACER_INFO: (.*),$`)
-	ErrPlayerNotFound        = fmt.Errorf("player not found")
+	TopPlayerRegExp    = regexp.MustCompile(`\["TOP_PLAYERS",\{"users":(.*?),"teams":(.*?)\],`)
+	TopPlayerMapRegExp = regexp.MustCompile(`"([0-9]+)":([0-9]+)`)
+	ErrPlayerNotFound  = fmt.Errorf("player not found")
 )
 
 // GetBootstrapData retrives the NTGLOBALS variable from Nitro Type.
@@ -193,58 +191,27 @@ func GetPlayerData(ctx context.Context, username string) (NTPlayerLegacy, error)
 		ctx,
 		chromedp.WithLogf(log.Printf),
 	)
+
 	defer cancel()
 
-	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
+
+	var output NTPlayerLegacy
 
 	profileURL := "https://www.nitrotype.com/racer/" + username
 
-	var requestID network.RequestID
-	downloadComplete := make(chan bool)
-
-	chromedp.ListenTarget(ctx, func(v interface{}) {
-		switch ev := v.(type) {
-		case *network.EventRequestWillBeSent:
-			if ev.Request.URL == profileURL {
-				requestID = ev.RequestID
-			}
-		case *network.EventLoadingFinished:
-			if ev.RequestID == requestID {
-				close(downloadComplete)
-			}
-		}
-	})
-
 	err := chromedp.Run(ctx,
-		network.Enable(),
 		chromedp.Navigate(profileURL),
+		chromedp.WaitReady("#root"),
+		chromedp.Evaluate("window.NTGLOBALS.RACER_INFO", &output, chromedp.EvalAsValue),
 	)
 	if err != nil {
+		if err.Error() == "encountered an undefined value" {
+			return nil, ErrPlayerNotFound
+		}
 		return nil, err
 	}
 
-	// This will block until the chromedp listener closes the channel
-	<-downloadComplete
-
-	// Get the downloaded bytes for the request id
-	var downloadBytes []byte
-	if err := chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
-		var err error
-		downloadBytes, err = network.GetResponseBody(requestID).Do(ctx)
-		return err
-	})); err != nil {
-		log.Fatal(err)
-	}
-
-	// Get user
-	matches := UserProfileExtractRegExp.FindSubmatch(downloadBytes)
-	if len(matches) != 2 {
-		return nil, ErrPlayerNotFound
-	}
-	var output NTPlayerLegacy
-	if err := json.Unmarshal(matches[1], &output); err != nil {
-		return nil, fmt.Errorf("unmarshal nt racer data failed: %w", err)
-	}
 	return output, nil
 }

@@ -144,13 +144,34 @@ func main() {
 				},
 			},
 			{
-				Name:    "collect",
-				Aliases: []string{"c"},
+				Name:    "bootstrap",
+				Aliases: []string{"b"},
 				Usage:   "grabs the latest nitro type bootstrap file data.",
 				Action: func(c *cli.Context) error {
 					source, err := nitrotype.GetBootstrapData(context.Background())
 					if err != nil {
 						return fmt.Errorf("unable to download bootstrap.js: %w", err)
+					}
+					output, err := json.Marshal(&source)
+					if err != nil {
+						return fmt.Errorf("unable to marshal to json: %w", err)
+					}
+					fmt.Println(string(output))
+					return nil
+				},
+			},
+			{
+				Name:    "player",
+				Aliases: []string{"p"},
+				Usage:   "grabs the latest nitro type player data.",
+				Action: func(c *cli.Context) error {
+					racer := c.Args().Get(0)
+					if racer == "" {
+						return fmt.Errorf("username required")
+					}
+					source, err := nitrotype.GetPlayerData(context.Background(), racer)
+					if err != nil {
+						return fmt.Errorf("unable to download player data: %w", err)
 					}
 					output, err := json.Marshal(&source)
 					if err != nil {
