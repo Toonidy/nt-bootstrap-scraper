@@ -182,7 +182,6 @@ func GetPlayerData(ctx context.Context, username string) (NTPlayerLegacy, error)
 		chromedp.NoFirstRun,
 		chromedp.NoDefaultBrowserCheck,
 		chromedp.NoSandbox,
-		chromedp.Headless,
 		chromedp.DisableGPU,
 	)
 	defer cancel()
@@ -190,8 +189,6 @@ func GetPlayerData(ctx context.Context, username string) (NTPlayerLegacy, error)
 	ctx, cancel = chromedp.NewContext(
 		ctx,
 		chromedp.WithLogf(log.Printf),
-		chromedp.WithDebugf(log.Printf),
-		chromedp.WithErrorf(log.Printf),
 	)
 
 	defer cancel()
