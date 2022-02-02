@@ -190,6 +190,8 @@ func GetPlayerData(ctx context.Context, username string) (NTPlayerLegacy, error)
 	ctx, cancel = chromedp.NewContext(
 		ctx,
 		chromedp.WithLogf(log.Printf),
+		chromedp.WithDebugf(log.Printf),
+		chromedp.WithErrorf(log.Printf),
 	)
 
 	defer cancel()
