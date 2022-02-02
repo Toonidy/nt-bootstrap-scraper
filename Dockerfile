@@ -8,7 +8,7 @@ RUN go build -o /main main.go
 
 # Final stage build, this will be the container
 # that we will deploy to production
-FROM debian:buster
+FROM debian:bullseye
 
 RUN useradd -m ntbootstrap
 COPY --from=go_builder /main ./
