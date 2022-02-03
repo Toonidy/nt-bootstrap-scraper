@@ -110,13 +110,13 @@ func loggerMiddleware(l *zap.Logger) func(next http.Handler) http.Handler {
 }
 
 // getPlayerData fetchces NT Bootstrap Data from the cache or the net
-func getPlayerData(ctx context.Context, logger *zap.Logger, cacheManager *cache.Cache, username string) (nitrotype.NTPlayerLegacy, error) {
+func getPlayerData(ctx context.Context, logger *zap.Logger, cacheManager *cache.Cache, username string) (*nitrotype.NTPlayer, error) {
 	cacheName := "player_data_" + username
 	cacheSource, found := cacheManager.Get(cacheName)
 	if found {
-		source, ok := cacheSource.(nitrotype.NTPlayerLegacy)
+		source, ok := cacheSource.(nitrotype.NTPlayer)
 		if ok {
-			return source, nil
+			return &source, nil
 		}
 		logger.Warn("failed to read player data from cache")
 	}
@@ -125,7 +125,7 @@ func getPlayerData(ctx context.Context, logger *zap.Logger, cacheManager *cache.
 		return nil, fmt.Errorf("failed to get latest nitro type player data: %w", err)
 	}
 
-	cacheManager.Set(cacheName, racer, cache.DefaultExpiration)
+	cacheManager.Set(cacheName, *racer, cache.DefaultExpiration)
 	return racer, nil
 
 }

@@ -177,7 +177,7 @@ func GetBootstrapData(ctx context.Context) (*NTGlobalsLegacy, error) {
 }
 
 // GetPlayerData fetches the RACER_INFO data from racer profile page.
-func GetPlayerData(ctx context.Context, username string) (NTPlayerLegacy, error) {
+func GetPlayerData(ctx context.Context, username string) (*NTPlayer, error) {
 	// Setup Chrome
 	ctx, cancel := chromedp.NewExecAllocator(ctx,
 		chromedp.UserAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36"),
@@ -242,10 +242,10 @@ func GetPlayerData(ctx context.Context, username string) (NTPlayerLegacy, error)
 		return nil, ErrPlayerNotFound
 	}
 
-	var output NTPlayerLegacy
+	var output NTPlayer
 	if err := json.Unmarshal(matches[1], &output); err != nil {
 		return nil, err
 	}
 
-	return output, nil
+	return &output, nil
 }

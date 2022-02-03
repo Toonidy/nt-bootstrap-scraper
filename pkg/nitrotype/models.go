@@ -1,8 +1,101 @@
 package nitrotype
 
-type NTGlobalsLegacy map[string]interface{}
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type NTPlayerLegacy map[string]interface{}
+
+// UserProfile contains data from the NT Racer profile.
+type NTPlayer struct {
+	UserID             int            `json:"userID"`
+	Username           string         `json:"username"`
+	Membership         string         `json:"membership"`
+	DisplayName        string         `json:"displayName"`
+	Title              string         `json:"title"`
+	Experience         int            `json:"experience"`
+	Level              int            `json:"level"`
+	TeamID             *int           `json:"teamID"`
+	LookingForTeam     int            `json:"lookingForTeam"`
+	CarID              int            `json:"carID"`
+	CarHueAngle        int            `json:"carHueAngle"`
+	TotalCars          int            `json:"totalCars"`
+	Nitros             int            `json:"nitros"`
+	NitrosUsed         int            `json:"nitrosUsed"`
+	RacesPlayed        int            `json:"racesPlaywed"`
+	LongestSession     int            `json:"longestSession"`
+	AvgSpeed           int            `json:"avgSpeed"`
+	HighestSpeed       int            `json:"highestSpeed"`
+	AllowFriendRequest int            `json:"allowFriendRequests"`
+	ProfileViews       int            `json:"profileViews"`
+	CreatedStamp       int            `json:"createdStamp"`
+	Tag                *string        `json:"tag"`
+	TagColor           *string        `json:"tagColor"`
+	Garage             []string       `json:"garage"`
+	Cars               []NTPlayerCar  `json:"cars"`
+	Loot               []NTPlayerLoot `json:"loot"`
+}
+
+// TODO: Enum types for loots.
+// TODO: Work out car type.
+
+// Loot contains loot information (usually used on the UserProfile).
+type NTPlayerLoot struct {
+	LootID       int                `json:"lootID"`
+	Type         string             `json:"type"`
+	Name         string             `json:"name"`
+	AssetKey     string             `json:"assetKey"`
+	Options      NTPlayerLootOption `json:"options"`
+	Equipped     int                `json:"equipped"`
+	CreatedStamp int                `json:"createdStamp"`
+}
+
+// LootOption contains options about a loot.
+type NTPlayerLootOption struct {
+	Src    string `json:"src"`
+	Type   string `json:"type"`
+	Rarity string `json:"rarity"`
+}
+
+// Car contains car info and it's paint job.
+type NTPlayerCar struct {
+	CarID        int    `json:"carID"`
+	Status       string `json:"status"`
+	CarHueAngle  int    `json:"carHueAngle"`
+	CreatedStamp int    `json:"createdStamp"`
+}
+
+func (c *NTPlayerCar) UnmarshalJSON(bs []byte) error {
+	data := []interface{}{}
+	err := json.Unmarshal(bs, &data)
+	if err != nil {
+		return err
+	}
+	carID, ok := data[0].(float64)
+	if !ok {
+		return fmt.Errorf("failed to get car id")
+	}
+	status, ok := data[1].(string)
+	if !ok {
+		return fmt.Errorf("failed to get status")
+	}
+	carHueAngle, ok := data[2].(float64)
+	if !ok {
+		return fmt.Errorf("failed to get car hue angle")
+	}
+	createdStamp, ok := data[3].(float64)
+	if !ok {
+		return fmt.Errorf("failed to get created stamp")
+	}
+	c.CarID = int(carID)
+	c.Status = status
+	c.CarHueAngle = int(carHueAngle)
+	c.CreatedStamp = int(createdStamp)
+	return nil
+}
+
+type NTGlobalsLegacy map[string]interface{}
 
 type NTGlobals struct {
 	ActionSeasons []ActiveSeason `json:"ACTIVE_SEASONS"`
