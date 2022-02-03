@@ -13,10 +13,10 @@ FROM debian:bullseye
 RUN useradd -m ntbootstrap
 COPY --from=go_builder /main ./
 
-RUN apt-get update; apt-get clean
-RUN apt-get update && apt-get -y install wget
-RUN wget --quiet https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-RUN apt install -y ./google-chrome-stable_current_amd64.deb
+RUN apt-get update && apt-get -y install wget gnupg
+RUN echo "deb [arch=amd64] https://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list
+RUN wget -O- https://dl.google.com/linux/linux_signing_key.pub |gpg --dearmor > /etc/apt/trusted.gpg.d/google.gpg
+RUN apt-get update && apt-get install google-chrome-beta -y
 
 # Execute Main Server
 USER ntbootstrap

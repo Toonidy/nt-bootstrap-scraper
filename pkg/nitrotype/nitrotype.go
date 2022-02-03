@@ -2,6 +2,7 @@ package nitrotype
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"regexp"
@@ -14,9 +15,10 @@ import (
 )
 
 var (
-	TopPlayerRegExp    = regexp.MustCompile(`\["TOP_PLAYERS",\{"users":(.*?),"teams":(.*?)\],`)
-	TopPlayerMapRegExp = regexp.MustCompile(`"([0-9]+)":([0-9]+)`)
-	ErrPlayerNotFound  = fmt.Errorf("player not found")
+	TopPlayerRegExp          = regexp.MustCompile(`\["TOP_PLAYERS",\{"users":(.*?),"teams":(.*?)\],`)
+	TopPlayerMapRegExp       = regexp.MustCompile(`"([0-9]+)":([0-9]+)`)
+	UserProfileExtractRegExp = regexp.MustCompile(`(?m)RACER_INFO: (.*),$`)
+	ErrPlayerNotFound        = fmt.Errorf("player not found")
 )
 
 // GetBootstrapData retrives the NTGLOBALS variable from Nitro Type.
@@ -194,22 +196,54 @@ func GetPlayerData(ctx context.Context, username string) (NTPlayerLegacy, error)
 
 	defer cancel()
 
-	ctx, cancel = context.WithTimeout(ctx, 300*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
-
-	var output NTPlayerLegacy
 
 	profileURL := "https://www.nitrotype.com/racer/" + username
 
-	err := chromedp.Run(ctx,
-		chromedp.Navigate(profileURL),
-		chromedp.WaitReady("#root"),
-		chromedp.Evaluate("window.NTGLOBALS.RACER_INFO", &output, chromedp.EvalAsValue),
-	)
+	// Setup download
+	var requestID network.RequestID
+	downloadComplete := make(chan bool)
+
+	chromedp.ListenTarget(ctx, func(v interface{}) {
+		switch ev := v.(type) {
+		case *network.EventRequestWillBeSent:
+			if ev.Request.URL == profileURL {
+				requestID = ev.RequestID
+			}
+		case *network.EventLoadingFinished:
+			if ev.RequestID == requestID {
+				close(downloadComplete)
+			}
+		}
+	})
+
+	err := chromedp.Run(ctx, chromedp.Navigate("view-source:"+profileURL))
 	if err != nil {
 		if err.Error() == "encountered an undefined value" {
 			return nil, ErrPlayerNotFound
 		}
+		return nil, err
+	}
+
+	<-downloadComplete
+
+	// Get the downloaded bytes for the request id
+	var downloadBytes []byte
+	if err := chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
+		downloadBytes, err = network.GetResponseBody(requestID).Do(ctx)
+		return err
+	})); err != nil {
+		return nil, err
+	}
+
+	matches := UserProfileExtractRegExp.FindSubmatch(downloadBytes)
+	if len(matches) != 2 {
+		return nil, ErrPlayerNotFound
+	}
+
+	var output NTPlayerLegacy
+	if err := json.Unmarshal(matches[1], &output); err != nil {
 		return nil, err
 	}
 
