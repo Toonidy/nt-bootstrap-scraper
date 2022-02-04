@@ -32,13 +32,25 @@ type NTPlayer struct {
 	CreatedStamp       int            `json:"createdStamp"`
 	Tag                *string        `json:"tag"`
 	TagColor           *string        `json:"tagColor"`
-	Garage             []string       `json:"garage"`
+	Garage             []GarageCarID  `json:"garage"`
 	Cars               []NTPlayerCar  `json:"cars"`
 	Loot               []NTPlayerLoot `json:"loot"`
 }
 
-// TODO: Enum types for loots.
-// TODO: Work out car type.
+// GarageCarID represents a car id in string or numeric format (EXAMPLE: billy33 has int)
+type GarageCarID string
+
+func (c *GarageCarID) UnmarshalJSON(bs []byte) error {
+	if bs[0] == '"' {
+		return json.Unmarshal(bs, (*string)(c))
+	}
+	var s int
+	if err := json.Unmarshal(bs, &s); err != nil {
+		return err
+	}
+	*c = GarageCarID(fmt.Sprint(s))
+	return nil
+}
 
 // Loot contains loot information (usually used on the UserProfile).
 type NTPlayerLoot struct {

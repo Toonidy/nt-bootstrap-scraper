@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"nt-bootstrap-scraper/pkg/nitrotype"
@@ -63,6 +64,11 @@ func NewAPIService(logger *zap.Logger, cacheManager *cache.Cache, corsOptions *c
 			racer, err := getPlayerData(r.Context(), logger, cacheManager, username)
 			if err != nil {
 				log.Error("grabbing player data from nitro type failed", zap.Error(err))
+				if errors.Is(err, nitrotype.ErrPlayerNotFound) {
+					w.WriteHeader(http.StatusNotFound)
+					w.Write([]byte("NT Player was not found."))
+					return
+				}
 
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte("Unable to collect NT Player Data. Please try again later."))
