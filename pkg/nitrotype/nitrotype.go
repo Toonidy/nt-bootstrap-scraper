@@ -168,8 +168,9 @@ func GetBootstrapData(ctx context.Context) (*NTGlobalsLegacy, error) {
 			Position: position,
 		})
 	}
-	ntGlobals["TopPlayers"] = topPlayers
-	ntGlobals["TopTeams"] = topTeams
+	delete(ntGlobals, "TOP_PLAYERS")
+	ntGlobals["TOP_PLAYERS"] = topPlayers
+	ntGlobals["TOP_TEAMS"] = topTeams
 	// ntGlobals.TopPlayers = topPlayers
 	// ntGlobals.TopTeams = topTeams
 
