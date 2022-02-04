@@ -147,6 +147,7 @@ func GetBootstrapData(ctx context.Context) (*NTGlobalsLegacy, error) {
 		}
 
 		topPlayers = append(topPlayers, RankItem{
+			Index:    i + 1,
 			ID:       userID,
 			Position: position,
 		})
@@ -164,6 +165,7 @@ func GetBootstrapData(ctx context.Context) (*NTGlobalsLegacy, error) {
 		}
 
 		topTeams = append(topTeams, RankItem{
+			Index:    i + 1,
 			ID:       teamID,
 			Position: position,
 		})

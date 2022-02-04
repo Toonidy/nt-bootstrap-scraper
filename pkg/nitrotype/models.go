@@ -360,6 +360,7 @@ type LootConfig struct {
 }
 
 type RankItem struct {
+	Index    int `json:"index"`
 	ID       int `json:"id"`
 	Position int `json:"position"`
 }
