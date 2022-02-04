@@ -38,18 +38,33 @@ type NTPlayer struct {
 }
 
 // GarageCarID represents a car id in string or numeric format (EXAMPLE: billy33 has int)
-type GarageCarID string
+type GarageCarID struct {
+	Value interface{}
+}
 
 func (c *GarageCarID) UnmarshalJSON(bs []byte) error {
-	if bs[0] == '"' {
-		return json.Unmarshal(bs, (*string)(c))
+	if string(bs) == "null" {
+		*c = GarageCarID{Value: nil}
+		return nil
 	}
-	var s int
-	if err := json.Unmarshal(bs, &s); err != nil {
+	if bs[0] == '"' {
+		var output string
+		if err := json.Unmarshal(bs, &output); err != nil {
+			return err
+		}
+		*c = GarageCarID{Value: output}
+		return nil
+	}
+	var output int
+	if err := json.Unmarshal(bs, &output); err != nil {
 		return err
 	}
-	*c = GarageCarID(fmt.Sprint(s))
+	*c = GarageCarID{Value: fmt.Sprint(output)}
 	return nil
+}
+
+func (c GarageCarID) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.Value)
 }
 
 // Loot contains loot information (usually used on the UserProfile).
