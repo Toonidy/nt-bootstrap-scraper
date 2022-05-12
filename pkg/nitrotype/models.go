@@ -23,7 +23,7 @@ type NTPlayer struct {
 	TotalCars          int            `json:"totalCars"`
 	Nitros             int            `json:"nitros"`
 	NitrosUsed         int            `json:"nitrosUsed"`
-	RacesPlayed        int            `json:"racesPlaywed"`
+	RacesPlayed        int            `json:"racesPlayed"`
 	LongestSession     int            `json:"longestSession"`
 	AvgSpeed           int            `json:"avgSpeed"`
 	HighestSpeed       int            `json:"highestSpeed"`
